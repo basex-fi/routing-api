@@ -1,5 +1,3 @@
-import { Protocol } from '@uniswap/router-sdk'
-import { ChainId } from '@uniswap/sdk-core'
+import { Protocol } from "@basex-fi/router-sdk";
 
-export const S3_POOL_CACHE_KEY = (baseKey: string, chain: ChainId, protocol: Protocol) =>
-  `${baseKey}-${chain}-${protocol}`
+export const S3_POOL_CACHE_KEY = (baseKey: string, protocol: Protocol) => `${baseKey}-${protocol}`;

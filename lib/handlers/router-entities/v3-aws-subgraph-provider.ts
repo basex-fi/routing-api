@@ -1,50 +1,50 @@
-import { IV3SubgraphProvider, log, V3SubgraphPool, V3SubgraphProvider } from '@uniswap/smart-order-router'
-import { S3 } from 'aws-sdk'
-import { ChainId } from '@uniswap/sdk-core'
-import _ from 'lodash'
-import NodeCache from 'node-cache'
+import { IV3SubgraphProvider, log, V3SubgraphPool, V3SubgraphProvider } from "@basex-fi/smart-order-router";
+import { S3 } from "aws-sdk";
 
-const POOL_CACHE = new NodeCache({ stdTTL: 240, useClones: false })
-const POOL_CACHE_KEY = (chainId: ChainId) => `pools${chainId}`
+import _ from "lodash";
+import NodeCache from "node-cache";
+
+const POOL_CACHE = new NodeCache({ stdTTL: 240, useClones: false });
+const POOL_CACHE_KEY = () => `pools`;
 
 export class V3AWSSubgraphProviderWithFallback extends V3SubgraphProvider implements IV3SubgraphProvider {
-  private key: string
+  private key: string;
 
-  constructor(private chain: ChainId, private bucket: string, key: string) {
-    super(chain)
-    this.key = `${key}${chain != ChainId.MAINNET ? `-${chain}` : ''}`
+  constructor(private bucket: string, key: string) {
+    super();
+    this.key = `${key}`;
   }
 
   public async getPools(): Promise<V3SubgraphPool[]> {
-    log.info(`In legacy AWS subgraph provider for protocol V3`)
+    log.info(`In legacy AWS subgraph provider for protocol V3`);
 
-    const s3 = new S3()
+    const s3 = new S3();
 
-    const cachedPools = POOL_CACHE.get<V3SubgraphPool[]>(POOL_CACHE_KEY(this.chain))
+    const cachedPools = POOL_CACHE.get<V3SubgraphPool[]>(POOL_CACHE_KEY());
 
     if (cachedPools) {
       log.info(
         { subgraphPoolsSample: cachedPools.slice(0, 5) },
         `Subgraph pools fetched from local cache. Num: ${cachedPools.length}`
-      )
+      );
 
-      return cachedPools
+      return cachedPools;
     }
 
     log.info(
       { bucket: this.bucket, key: this.key },
       `Subgraph pools local cache miss. Getting subgraph pools from S3 ${this.bucket}/${this.key}`
-    )
+    );
     try {
-      const result = await s3.getObject({ Key: this.key, Bucket: this.bucket }).promise()
+      const result = await s3.getObject({ Key: this.key, Bucket: this.bucket }).promise();
 
-      const { Body: poolsBuffer } = result
+      const { Body: poolsBuffer } = result;
 
       if (!poolsBuffer) {
-        throw new Error('Could not get subgraph pool cache from S3')
+        throw new Error("Could not get subgraph pool cache from S3");
       }
 
-      let pools = JSON.parse(poolsBuffer.toString('utf-8'))
+      let pools = JSON.parse(poolsBuffer.toString("utf-8"));
 
       if (pools[0].totalValueLockedETH) {
         pools = _.map(
@@ -62,25 +62,25 @@ export class V3AWSSubgraphProviderWithFallback extends V3SubgraphProvider implem
               tvlETH: parseFloat(pool.totalValueLockedETH),
               tvlUSD: parseFloat(pool.totalValueLockedUSD),
             } as V3SubgraphPool)
-        )
-        log.info({ sample: pools.slice(0, 5) }, 'Converted legacy schema to new schema')
+        );
+        log.info({ sample: pools.slice(0, 5) }, "Converted legacy schema to new schema");
       }
 
       log.info(
         { bucket: this.bucket, key: this.key, sample: pools.slice(0, 3) },
         `Got subgraph pools from S3. Num: ${pools.length}`
-      )
+      );
 
-      POOL_CACHE.set<V3SubgraphPool[]>(POOL_CACHE_KEY(this.chain), pools)
+      POOL_CACHE.set<V3SubgraphPool[]>(POOL_CACHE_KEY(), pools);
 
-      return pools
+      return pools;
     } catch (err) {
       log.info(
         { bucket: this.bucket, key: this.key },
         `Failed to get subgraph pools from S3 ${this.bucket}/${this.key}.`
-      )
+      );
 
-      return super.getPools()
+      return super.getPools();
     }
   }
 }

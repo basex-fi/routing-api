@@ -1,47 +1,44 @@
-import { Protocol } from '@uniswap/router-sdk'
-import { setGlobalLogger } from '@uniswap/smart-order-router'
-import { EventBridgeEvent, ScheduledHandler } from 'aws-lambda'
-import { S3 } from 'aws-sdk'
-import { ChainId } from '@uniswap/sdk-core'
-import { default as bunyan, default as Logger } from 'bunyan'
-import { S3_POOL_CACHE_KEY } from '../util/pool-cache-key'
-import { chainProtocols } from './cache-config'
+import { Protocol } from "@basex-fi/router-sdk";
+import { setGlobalLogger } from "@basex-fi/smart-order-router";
+import { EventBridgeEvent, ScheduledHandler } from "aws-lambda";
+import { S3 } from "aws-sdk";
+
+import { default as bunyan, default as Logger } from "bunyan";
+import { S3_POOL_CACHE_KEY } from "../util/pool-cache-key";
+import { chainProtocols } from "./cache-config";
 
 const handler: ScheduledHandler = async (event: EventBridgeEvent<string, void>) => {
-  const chainId: ChainId = parseInt(process.env.chainId!)
-  const protocol = process.env.protocol! as Protocol
+  const protocol = process.env.protocol! as Protocol;
   // Don't retry for V2 as it will timeout and throw 500
-  const provider = chainProtocols.find(
-    (element) => element.protocol == protocol && element.chainId == chainId
-  )!.provider
+  const provider = chainProtocols.find((element) => element.protocol == protocol)!.provider;
   const log: Logger = bunyan.createLogger({
-    name: 'RoutingLambda',
+    name: "RoutingLambda",
     serializers: bunyan.stdSerializers,
-    level: 'info',
+    level: "info",
     requestId: event.id,
-  })
-  setGlobalLogger(log)
+  });
+  setGlobalLogger(log);
 
-  const s3 = new S3()
+  const s3 = new S3();
 
-  log.info(`Getting pools for ${protocol} on ${chainId}`)
+  log.info(`Getting pools for ${protocol}`);
 
-  let pools
+  let pools;
   try {
-    pools = await provider.getPools()
+    pools = await provider.getPools();
   } catch (err) {
-    log.error({ err }, `Failed to get pools for ${protocol} on ${chainId}`)
-    throw new Error(`Failed to get pools for ${protocol} on ${chainId}`)
+    log.error({ err }, `Failed to get pools for ${protocol}`);
+    throw new Error(`Failed to get pools for ${protocol}`);
   }
 
   if (!pools || pools.length == 0) {
-    log.info(`No ${protocol} pools found from the subgraph for ${chainId.toString()}`)
-    return
+    log.info(`No ${protocol} pools found from the subgraph for`);
+    return;
   }
 
-  const key = S3_POOL_CACHE_KEY(process.env.POOL_CACHE_KEY!, chainId, protocol)
+  const key = S3_POOL_CACHE_KEY(process.env.POOL_CACHE_KEY!, protocol);
 
-  log.info(`Got ${pools.length} ${protocol} pools from the subgraph for ${chainId.toString()}. Saving to ${key}`)
+  log.info(`Got ${pools.length} ${protocol} pools from the subgraph. Saving to ${key}`);
 
   const result = await s3
     .putObject({
@@ -49,11 +46,11 @@ const handler: ScheduledHandler = async (event: EventBridgeEvent<string, void>) 
       Key: key,
       Body: JSON.stringify(pools),
     })
-    .promise()
+    .promise();
 
-  log.info({ result }, `Done ${protocol} for ${chainId.toString()}`)
+  log.info({ result }, `Done ${protocol}`);
 
-  log.info(`Successfully cached ${chainId} ${protocol} pools to S3`)
-}
+  log.info(`Successfully cached ${protocol} pools to S3`);
+};
 
-module.exports = { handler }
+module.exports = { handler };

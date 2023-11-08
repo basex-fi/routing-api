@@ -1,31 +1,28 @@
-import { ChainId, TradeType } from '@uniswap/sdk-core'
-import { CachedRoutes } from '@uniswap/smart-order-router'
+import { TradeType } from "@basex-fi/sdk-core";
+import { CachedRoutes } from "@basex-fi/smart-order-router";
 
 interface PairTradeTypeChainIdArgs {
-  tokenIn: string
-  tokenOut: string
-  tradeType: TradeType
-  chainId: ChainId
+  tokenIn: string;
+  tokenOut: string;
+  tradeType: TradeType;
 }
 
 /**
  * Class used to model the partition key of the CachedRoutes cache database and configuration.
  */
 export class PairTradeTypeChainId {
-  public readonly tokenIn: string
-  public readonly tokenOut: string
-  public readonly tradeType: TradeType
-  public readonly chainId: ChainId
+  public readonly tokenIn: string;
+  public readonly tokenOut: string;
+  public readonly tradeType: TradeType;
 
-  constructor({ tokenIn, tokenOut, tradeType, chainId }: PairTradeTypeChainIdArgs) {
-    this.tokenIn = tokenIn.toLowerCase() // All token addresses should be lower case for normalization.
-    this.tokenOut = tokenOut.toLowerCase() // All token addresses should be lower case for normalization.
-    this.tradeType = tradeType
-    this.chainId = chainId
+  constructor({ tokenIn, tokenOut, tradeType }: PairTradeTypeChainIdArgs) {
+    this.tokenIn = tokenIn.toLowerCase(); // All token addresses should be lower case for normalization.
+    this.tokenOut = tokenOut.toLowerCase(); // All token addresses should be lower case for normalization.
+    this.tradeType = tradeType;
   }
 
   public toString(): string {
-    return `${this.tokenIn}/${this.tokenOut}/${this.tradeType}/${this.chainId}`
+    return `${this.tokenIn}/${this.tokenOut}/${this.tradeType}`;
   }
 
   public static fromCachedRoutes(cachedRoutes: CachedRoutes): PairTradeTypeChainId {
@@ -33,7 +30,6 @@ export class PairTradeTypeChainId {
       tokenIn: cachedRoutes.tokenIn.address,
       tokenOut: cachedRoutes.tokenOut.address,
       tradeType: cachedRoutes.tradeType,
-      chainId: cachedRoutes.chainId,
-    })
+    });
   }
 }

@@ -1,82 +1,51 @@
-import { WidgetsFactory } from './core/widgets-factory'
-import { Widget } from './core/model/widget'
-import { ChainId } from '@uniswap/sdk-core'
-import _ from 'lodash'
-import { ID_TO_NETWORK_NAME } from '@uniswap/smart-order-router/build/main/util/chains'
-import { ProviderName } from '../handlers/evm/provider/ProviderName'
+import { WidgetsFactory } from "./core/widgets-factory";
+import { Widget } from "./core/model/widget";
 
-const ID_TO_PROVIDER = (id: ChainId): string => {
-  switch (id) {
-    case ChainId.MAINNET:
-    case ChainId.OPTIMISM:
-    case ChainId.SEPOLIA:
-    case ChainId.POLYGON:
-    case ChainId.POLYGON_MUMBAI:
-    case ChainId.ARBITRUM_ONE:
-    case ChainId.ARBITRUM_GOERLI:
-    case ChainId.AVALANCHE:
-    case ChainId.GOERLI:
-      return ProviderName.INFURA
-    case ChainId.CELO:
-    case ChainId.BNB:
-    case ChainId.BASE:
-      return ProviderName.QUIKNODE
-    case ChainId.CELO_ALFAJORES:
-      return ProviderName.FORNO
-    default:
-      return ProviderName.UNKNOWN
-  }
-}
+import _ from "lodash";
+import { TO_NETWORK_NAME, TO_PROVIDER } from "@basex-fi/smart-order-router";
 
 export class RpcProvidersWidgetsFactory implements WidgetsFactory {
-  region: string
-  namespace: string
-  chains: Array<ChainId>
+  region: string;
+  namespace: string;
 
-  constructor(namespace: string, region: string, chains: Array<ChainId>) {
-    this.namespace = namespace
-    this.region = region
-    this.chains = chains
+  constructor(namespace: string, region: string) {
+    this.namespace = namespace;
+    this.region = region;
   }
 
   generateWidgets(): Widget[] {
-    return this.generateWidgetsForMethod('CALL')
-      .concat(this.generateWidgetsForMethod('GETBLOCKNUMBER'))
-      .concat(this.generateWidgetsForMethod('GETGASPRICE'))
-      .concat(this.generateWidgetsForMethod('GETNETWORK'))
-      .concat(this.generateWidgetsForMethod('RESOLVENAME'))
+    return this.generateWidgetsForMethod("CALL")
+      .concat(this.generateWidgetsForMethod("GETBLOCKNUMBER"))
+      .concat(this.generateWidgetsForMethod("GETGASPRICE"))
+      .concat(this.generateWidgetsForMethod("GETNETWORK"))
+      .concat(this.generateWidgetsForMethod("RESOLVENAME"));
   }
 
   private generateWidgetsForMethod(rpcMethod: string): Widget[] {
-    return this.generateRequestsWidgetForMethod(rpcMethod).concat(this.generateSuccessRateForMethod(rpcMethod))
+    return this.generateRequestsWidgetForMethod(rpcMethod).concat(this.generateSuccessRateForMethod(rpcMethod));
   }
 
   private generateSuccessRateForMethod(rpcMethod: string): Widget[] {
-    const chainsWithIndices = this.chains.map((chainId, index) => {
-      return { chainId: chainId, index: index }
-    })
-    const metrics = _.flatMap(chainsWithIndices, (chainIdAndIndex) => {
-      const chainId = chainIdAndIndex.chainId
-      const index = chainIdAndIndex.index
-      const providerName = ID_TO_PROVIDER(chainId)
+    const metrics = () => {
+      const providerName = TO_PROVIDER();
 
-      const metric1 = `m${index * 2 + 1}`
-      const metric2 = `m${index * 2 + 2}`
-      const expression = `e${index}`
+      const metric1 = `m${0 * 2 + 1}`;
+      const metric2 = `m${0 * 2 + 2}`;
+      const expression = `e${0}`;
 
       return [
         [
           {
             expression: `${metric1} / (${metric1} + ${metric2}) * 100`,
-            label: `RPC ${providerName} Chain ${ID_TO_NETWORK_NAME(chainId)} ${rpcMethod} Success Rate`,
+            label: `RPC ${providerName} Chain ${TO_NETWORK_NAME()} ${rpcMethod} Success Rate`,
             id: expression,
           },
         ],
         [
           this.namespace,
-          `RPC_${providerName}_${chainId}_${rpcMethod}_SUCCESS`,
-          'Service',
-          'RoutingAPI',
+          `RPC_${providerName}_${rpcMethod}_SUCCESS`,
+          "Service",
+          "RoutingAPI",
           {
             id: metric1,
             visible: false,
@@ -84,64 +53,60 @@ export class RpcProvidersWidgetsFactory implements WidgetsFactory {
         ],
         [
           this.namespace,
-          `RPC_${providerName}_${chainId}_${rpcMethod}_FAILURE`,
-          'Service',
-          'RoutingAPI',
+          `RPC_${providerName}_${rpcMethod}_FAILURE`,
+          "Service",
+          "RoutingAPI",
           {
             id: metric2,
             visible: false,
           },
         ],
-      ]
-    })
+      ];
+    };
 
     return [
       {
         height: 10,
         width: 12,
-        type: 'metric',
+        type: "metric",
         properties: {
           metrics: metrics,
-          view: 'timeSeries',
+          view: "timeSeries",
           stacked: false,
           region: this.region,
-          stat: 'SampleCount',
+          stat: "SampleCount",
           period: 300,
           title: `RPC ${rpcMethod} Success Rate`,
         },
       },
-    ]
+    ];
   }
 
   private generateRequestsWidgetForMethod(rpcMethod: string): Widget[] {
-    const chainsWithIndices = this.chains.map((chainId, index) => {
-      return { chainId: chainId, index: index }
-    })
-    const metrics = _.flatMap(chainsWithIndices, (chainIdAndIndex) => {
-      const chainId = chainIdAndIndex.chainId
-      const providerName = ID_TO_PROVIDER(chainId)
+    const metrics = () => {
+      const providerName = TO_PROVIDER();
 
       return [
-        [this.namespace, `RPC_${providerName}_${chainId}_${rpcMethod}_SUCCESS`, 'Service', 'RoutingAPI'],
-        [this.namespace, `RPC_${providerName}_${chainId}_${rpcMethod}_FAILURE`, 'Service', 'RoutingAPI'],
-      ]
-    })
+        [this.namespace, `RPC_${providerName}_${rpcMethod}_SUCCESS`, "Service", "RoutingAPI"],
+        [this.namespace, `RPC_${providerName}_${rpcMethod}_FAILURE`, "Service", "RoutingAPI"],
+      ];
+    };
 
     return [
       {
         height: 10,
         width: 12,
-        type: 'metric',
+        type: "metric",
         properties: {
           metrics: metrics,
-          view: 'timeSeries',
+          view: "timeSeries",
           stacked: true,
           region: this.region,
-          stat: 'SampleCount',
+          stat: "SampleCount",
           period: 300,
           title: `RPC ${rpcMethod} Requests`,
         },
       },
-    ]
+    ];
   }
 }

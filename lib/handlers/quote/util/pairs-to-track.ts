@@ -1,36 +1,11 @@
-import { ChainId, TradeType } from '@uniswap/sdk-core'
+import { TradeType } from "@basex-fi/sdk-core";
 
-export const PAIRS_TO_TRACK: Map<ChainId, Map<TradeType, string[]>> = new Map([
+export const PAIRS_TO_TRACK: Map<string, Map<TradeType, string[]>> = new Map([
   [
-    ChainId.MAINNET,
+    "8453",
     new Map([
-      [
-        TradeType.EXACT_INPUT,
-        ['WETH/USDC', 'USDC/WETH', 'USDT/WETH', 'WETH/USDT', 'WETH/*', 'USDC/*', 'USDT/*', 'DAI/*', 'WBTC/*'],
-      ],
-      [TradeType.EXACT_OUTPUT, ['USDC/WETH', '*/WETH', '*/USDC', '*/USDT', '*/DAI']],
+      [TradeType.EXACT_INPUT, ["WETH/USDC", "USDC/WETH"]],
+      [TradeType.EXACT_OUTPUT, ["USDC/WETH"]],
     ]),
   ],
-  [
-    ChainId.OPTIMISM,
-    new Map([
-      [TradeType.EXACT_INPUT, ['WETH/USDC', 'USDC/WETH']],
-      [TradeType.EXACT_OUTPUT, ['*/WETH']],
-    ]),
-  ],
-  [
-    ChainId.ARBITRUM_ONE,
-    new Map([
-      [TradeType.EXACT_INPUT, ['WETH/USDC', 'USDC/WETH']],
-      [TradeType.EXACT_OUTPUT, ['*/WETH']],
-    ]),
-  ],
-  [
-    ChainId.POLYGON,
-    new Map([
-      [TradeType.EXACT_INPUT, ['WETH/USDC', 'USDC/WETH', 'WMATIC/USDC', 'USDC/WMATIC']],
-      [TradeType.EXACT_OUTPUT, ['*/WMATIC']],
-    ]),
-  ],
-  [ChainId.CELO, new Map([[TradeType.EXACT_OUTPUT, ['*/CELO']]])],
-])
+]);

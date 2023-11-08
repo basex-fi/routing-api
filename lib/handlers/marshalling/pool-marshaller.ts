@@ -1,16 +1,16 @@
-import { Pool } from '@uniswap/v3-sdk'
-import { FeeAmount } from '@uniswap/v3-sdk/dist/constants'
-import { MarshalledToken, TokenMarshaller } from './token-marshaller'
-import { Protocol } from '@uniswap/router-sdk'
+import { Pool, FeeAmount } from "@basex-fi/sdk-core";
+
+import { MarshalledToken, TokenMarshaller } from "./token-marshaller";
+import { Protocol } from "@basex-fi/router-sdk";
 
 export interface MarshalledPool {
-  protocol: Protocol
-  token0: MarshalledToken
-  token1: MarshalledToken
-  fee: FeeAmount
-  sqrtRatioX96: string
-  liquidity: string
-  tickCurrent: number
+  protocol: Protocol;
+  token0: MarshalledToken;
+  token1: MarshalledToken;
+  fee: FeeAmount;
+  sqrtRatioX96: string;
+  liquidity: string;
+  tickCurrent: number;
 }
 
 export class PoolMarshaller {
@@ -23,7 +23,7 @@ export class PoolMarshaller {
       sqrtRatioX96: pool.sqrtRatioX96.toString(),
       liquidity: pool.liquidity.toString(),
       tickCurrent: pool.tickCurrent,
-    }
+    };
   }
 
   public static unmarshal(marshalledPool: MarshalledPool): Pool {
@@ -34,6 +34,6 @@ export class PoolMarshaller {
       marshalledPool.sqrtRatioX96,
       marshalledPool.liquidity,
       marshalledPool.tickCurrent
-    )
+    );
   }
 }

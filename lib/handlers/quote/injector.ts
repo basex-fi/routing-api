@@ -1,25 +1,20 @@
 import {
   AlphaRouter,
   AlphaRouterConfig,
-  ID_TO_CHAIN_ID,
   IRouter,
-  LegacyRoutingConfig,
   setGlobalLogger,
   setGlobalMetric,
-  V3HeuristicGasModelFactory,
-} from '@uniswap/smart-order-router'
-import { MetricsLogger } from 'aws-embedded-metrics'
-import { APIGatewayProxyEvent, Context } from 'aws-lambda'
-import { default as bunyan, default as Logger } from 'bunyan'
-import { BigNumber } from 'ethers'
-import { ContainerInjected, InjectorSOR, RequestInjected } from '../injector-sor'
-import { AWSMetricsLogger } from '../router-entities/aws-metrics-logger'
-import { StaticGasPriceProvider } from '../router-entities/static-gas-price-provider'
-import { QuoteQueryParams } from './schema/quote-schema'
-export class QuoteHandlerInjector extends InjectorSOR<
-  IRouter<AlphaRouterConfig | LegacyRoutingConfig>,
-  QuoteQueryParams
-> {
+} from "@basex-fi/smart-order-router";
+import { V3HeuristicGasModelFactory } from "@basex-fi/smart-order-router/build/main/routers/alpha-router/gas-models/v3/v3-heuristic-gas-model";
+import { MetricsLogger } from "aws-embedded-metrics";
+import { APIGatewayProxyEvent, Context } from "aws-lambda";
+import { default as bunyan, default as Logger } from "bunyan";
+import { BigNumber } from "ethers";
+import { ContainerInjected, InjectorSOR, RequestInjected } from "../injector-sor";
+import { AWSMetricsLogger } from "../router-entities/aws-metrics-logger";
+import { StaticGasPriceProvider } from "../router-entities/static-gas-price-provider";
+import { QuoteQueryParams } from "./schema/quote-schema";
+export class QuoteHandlerInjector extends InjectorSOR<IRouter<AlphaRouterConfig>, QuoteQueryParams> {
   public async getRequestInjected(
     containerInjected: ContainerInjected,
     _requestBody: void,
@@ -28,18 +23,18 @@ export class QuoteHandlerInjector extends InjectorSOR<
     context: Context,
     log: Logger,
     metricsLogger: MetricsLogger
-  ): Promise<RequestInjected<IRouter<AlphaRouterConfig | LegacyRoutingConfig>>> {
-    const requestId = context.awsRequestId
-    const quoteId = requestId.substring(0, 5)
+  ): Promise<RequestInjected<IRouter<AlphaRouterConfig>>> {
+    const requestId = context.awsRequestId;
+    const quoteId = requestId.substring(0, 5);
     // Sample 10% of all requests at the INFO log level for debugging purposes.
     // All other requests will only log warnings and errors.
     // Note that we use WARN as a default rather than ERROR
     // to capture Tapcompare logs in the smart-order-router.
-    const logLevel = Math.random() < 0.1 ? bunyan.INFO : bunyan.WARN
+    const logLevel = Math.random() < 0.1 ? bunyan.INFO : bunyan.WARN;
 
     const {
       tokenInAddress,
-      tokenInChainId,
+
       tokenOutAddress,
       amount,
       type,
@@ -47,7 +42,7 @@ export class QuoteHandlerInjector extends InjectorSOR<
       gasPriceWei,
       quoteSpeed,
       intent,
-    } = requestQueryParams
+    } = requestQueryParams;
 
     log = log.child({
       serializers: bunyan.stdSerializers,
@@ -55,28 +50,23 @@ export class QuoteHandlerInjector extends InjectorSOR<
       requestId,
       quoteId,
       tokenInAddress,
-      chainId: tokenInChainId,
       tokenOutAddress,
       amount,
       type,
       algorithm,
-    })
-    setGlobalLogger(log)
+    });
+    setGlobalLogger(log);
 
-    metricsLogger.setNamespace('Uniswap')
-    metricsLogger.setDimensions({ Service: 'RoutingAPI' })
-    const metric = new AWSMetricsLogger(metricsLogger)
-    setGlobalMetric(metric)
+    metricsLogger.setNamespace("Uniswap");
+    metricsLogger.setDimensions({ Service: "RoutingAPI" });
+    const metric = new AWSMetricsLogger(metricsLogger);
+    setGlobalMetric(metric);
 
-    // Today API is restricted such that both tokens must be on the same chain.
-    const chainId = tokenInChainId
-    const chainIdEnum = ID_TO_CHAIN_ID(chainId)
+    const { dependencies } = containerInjected;
 
-    const { dependencies } = containerInjected
-
-    if (!dependencies[chainIdEnum]) {
+    if (!dependencies) {
       // Request validation should prevent reject unsupported chains with 4xx already, so this should not be possible.
-      throw new Error(`No container injected dependencies for chain: ${chainIdEnum}`)
+      throw new Error(`No container injected dependencies`);
     }
 
     const {
@@ -87,29 +77,27 @@ export class QuoteHandlerInjector extends InjectorSOR<
       tokenListProvider,
       v3SubgraphProvider,
       blockedTokenListProvider,
-      v2PoolProvider,
+
       tokenValidatorProvider,
       tokenPropertiesProvider,
-      v2QuoteProvider,
-      v2SubgraphProvider,
+
       gasPriceProvider: gasPriceProviderOnChain,
       simulator,
       routeCachingProvider,
-    } = dependencies[chainIdEnum]!
+    } = dependencies!;
 
-    let onChainQuoteProvider = dependencies[chainIdEnum]!.onChainQuoteProvider
-    let gasPriceProvider = gasPriceProviderOnChain
+    let onChainQuoteProvider = dependencies!.onChainQuoteProvider;
+    let gasPriceProvider = gasPriceProviderOnChain;
     if (gasPriceWei) {
-      const gasPriceWeiBN = BigNumber.from(gasPriceWei)
-      gasPriceProvider = new StaticGasPriceProvider(gasPriceWeiBN)
+      const gasPriceWeiBN = BigNumber.from(gasPriceWei);
+      gasPriceProvider = new StaticGasPriceProvider(gasPriceWeiBN);
     }
 
-    let router
+    let router;
     switch (algorithm) {
-      case 'alpha':
+      case "alpha":
       default:
         router = new AlphaRouter({
-          chainId,
           provider,
           v3SubgraphProvider,
           multicall2Provider: multicallProvider,
@@ -119,29 +107,25 @@ export class QuoteHandlerInjector extends InjectorSOR<
           v3GasModelFactory: new V3HeuristicGasModelFactory(),
           blockedTokenListProvider,
           tokenProvider,
-          v2PoolProvider,
-          v2QuoteProvider,
-          v2SubgraphProvider,
+
           simulator,
           routeCachingProvider,
           tokenValidatorProvider,
           tokenPropertiesProvider,
-        })
-        break
+        });
+        break;
     }
 
     return {
-      chainId: chainIdEnum,
       id: quoteId,
       log,
       metric,
       router,
       v3PoolProvider,
-      v2PoolProvider,
       tokenProvider,
       tokenListProvider,
       quoteSpeed,
       intent,
-    }
+    };
   }
 }
