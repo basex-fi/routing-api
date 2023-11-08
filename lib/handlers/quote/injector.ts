@@ -5,6 +5,7 @@ import {
   setGlobalLogger,
   setGlobalMetric,
 } from "@basex-fi/smart-order-router";
+
 import { V3HeuristicGasModelFactory } from "@basex-fi/smart-order-router/build/main/routers/alpha-router/gas-models/v3/v3-heuristic-gas-model";
 import { MetricsLogger } from "aws-embedded-metrics";
 import { APIGatewayProxyEvent, Context } from "aws-lambda";
@@ -14,6 +15,9 @@ import { ContainerInjected, InjectorSOR, RequestInjected } from "../injector-sor
 import { AWSMetricsLogger } from "../router-entities/aws-metrics-logger";
 import { StaticGasPriceProvider } from "../router-entities/static-gas-price-provider";
 import { QuoteQueryParams } from "./schema/quote-schema";
+
+import { ChainId, ContainerDependencies } from "../injector-sor";
+
 export class QuoteHandlerInjector extends InjectorSOR<IRouter<AlphaRouterConfig>, QuoteQueryParams> {
   public async getRequestInjected(
     containerInjected: ContainerInjected,
@@ -84,9 +88,9 @@ export class QuoteHandlerInjector extends InjectorSOR<IRouter<AlphaRouterConfig>
       gasPriceProvider: gasPriceProviderOnChain,
       simulator,
       routeCachingProvider,
-    } = dependencies!;
+    } = dependencies![ChainId.BASE] as ContainerDependencies;
 
-    let onChainQuoteProvider = dependencies!.onChainQuoteProvider;
+    let onChainQuoteProvider = dependencies![ChainId.BASE]!.onChainQuoteProvider;
     let gasPriceProvider = gasPriceProviderOnChain;
     if (gasPriceWei) {
       const gasPriceWeiBN = BigNumber.from(gasPriceWei);

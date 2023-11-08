@@ -1,8 +1,10 @@
 import { TradeType } from "@basex-fi/sdk-core";
 
-export const PAIRS_TO_TRACK: Map<string, Map<TradeType, string[]>> = new Map([
+import { ChainId } from "../../injector-sor";
+
+export const PAIRS_TO_TRACK: Map<ChainId, Map<TradeType, string[]>> = new Map([
   [
-    "8453",
+    ChainId.BASE,
     new Map([
       [TradeType.EXACT_INPUT, ["WETH/USDC", "USDC/WETH"]],
       [TradeType.EXACT_OUTPUT, ["USDC/WETH"]],

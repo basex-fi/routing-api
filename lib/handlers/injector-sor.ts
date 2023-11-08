@@ -1,4 +1,4 @@
-import { Token, TokenList } from "@basex-fi/sdk-core";
+import { Token } from "@basex-fi/sdk-core";
 import {
   CachingGasStationProvider,
   CachingTokenListProvider,
@@ -29,9 +29,7 @@ import {
   TokenValidatorProvider,
   ITokenPropertiesProvider,
 } from "@basex-fi/smart-order-router";
-
-const DEFAULT_TOKEN_LIST_URL = "https://gateway.ipfs.io/ipns/tokens.uniswap.org";
-
+import { TokenList } from "@basex-fi/sdk-core";
 import { default as bunyan, default as Logger } from "bunyan";
 import { ethers } from "ethers";
 import _ from "lodash";
@@ -48,6 +46,14 @@ import { InstrumentedEVMProvider } from "./evm/provider/InstrumentedEVMProvider"
 import { deriveProviderName } from "./evm/provider/ProviderName";
 
 import { OnChainTokenFeeFetcher } from "@basex-fi/smart-order-router/build/main/providers/token-fee-fetcher";
+
+const DEFAULT_TOKEN_LIST = "https://gateway.ipfs.io/ipns/tokens.uniswap.org";
+
+export enum ChainId {
+  BASE = 8453,
+}
+
+export const SUPPORTED_CHAINS = [ChainId.BASE];
 
 export interface RequestInjected<Router> extends BaseRInj {
   metric: IMetric;
@@ -81,7 +87,9 @@ export type ContainerDependencies = {
 };
 
 export interface ContainerInjected {
-  dependencies: ContainerDependencies;
+  dependencies: {
+    [chainId in ChainId]?: ContainerDependencies;
+  };
 }
 
 export abstract class InjectorSOR<Router, QueryParams> extends Injector<
@@ -109,17 +117,27 @@ export abstract class InjectorSOR<Router, QueryParams> extends Injector<
         AWS_LAMBDA_FUNCTION_NAME,
       } = process.env;
 
-      const dependenciesArray: any[] = await Promise.all([
-        async () => {
-          const url = process.env[`WEB3_RPC`]!;
+      const dependenciesByChain: {
+        [chainId in ChainId]?: ContainerDependencies;
+      } = {};
 
+      const dependenciesByChainArray = await Promise.all(
+        _.map(SUPPORTED_CHAINS, async (chainId) => {
+          const url = process.env[`WEB3_RPC_${chainId.toString()}`]!;
           if (!url) {
-            log.fatal(`Fatal: No Web3 RPC endpoint set for chain`);
-            return { dependencies: {} as ContainerDependencies };
+            log.fatal({ chainId: chainId }, `Fatal: No Web3 RPC endpoint set for chain`);
+            return { chainId, dependencies: {} as ContainerDependencies };
             // This router instance will not be able to route through any chain
             // for which RPC URL is not set
             // For now, if RPC URL is not set for a chain, a request to route
             // on the chain will return Err 500
+          }
+
+          let timeout: number;
+          switch (chainId) {
+            default:
+              timeout = 5000;
+              break;
           }
 
           const provider = new DefaultEVMClient({
@@ -127,9 +145,9 @@ export abstract class InjectorSOR<Router, QueryParams> extends Injector<
               new InstrumentedEVMProvider({
                 url: {
                   url: url,
-                  timeout: 5000,
+                  timeout,
                 },
-                network: 8453,
+                network: chainId,
                 name: deriveProviderName(url),
               }),
             ],
@@ -166,7 +184,7 @@ export abstract class InjectorSOR<Router, QueryParams> extends Injector<
           );
 
           const [tokenListProvider, blockedTokenListProvider, v3SubgraphProvider] = await Promise.all([
-            AWSTokenListProvider.fromTokenListS3Bucket(TOKEN_LIST_CACHE_BUCKET!, DEFAULT_TOKEN_LIST_URL),
+            AWSTokenListProvider.fromTokenListS3Bucket(TOKEN_LIST_CACHE_BUCKET!, DEFAULT_TOKEN_LIST),
             CachingTokenListProvider.fromTokenList(UNSUPPORTED_TOKEN_LIST as TokenList, blockedTokenCache),
             (async () => {
               try {
@@ -187,36 +205,41 @@ export abstract class InjectorSOR<Router, QueryParams> extends Injector<
 
           // Some providers like Infura set a gas limit per call of 10x block gas which is approx 150m
           // 200*725k < 150m
-          let quoteProvider = new OnChainQuoteProvider(
-            provider,
-            multicall2Provider,
-            {
-              retries: 2,
-              minTimeout: 100,
-              maxTimeout: 1000,
-            },
-            {
-              multicallChunk: 110,
-              gasLimitPerCall: 1_200_000,
-              quoteMinSuccessRate: 0.1,
-            },
-            {
-              gasLimitOverride: 3_000_000,
-              multicallChunk: 45,
-            },
-            {
-              gasLimitOverride: 3_000_000,
-              multicallChunk: 45,
-            },
-            {
-              baseBlockOffset: -25,
-              rollback: {
-                enabled: true,
-                attemptsBeforeRollback: 1,
-                rollbackBlockOffset: -20,
-              },
-            }
-          );
+          let quoteProvider: OnChainQuoteProvider | undefined = undefined;
+          switch (chainId) {
+            case ChainId.BASE:
+              quoteProvider = new OnChainQuoteProvider(
+                provider,
+                multicall2Provider,
+                {
+                  retries: 2,
+                  minTimeout: 100,
+                  maxTimeout: 1000,
+                },
+                {
+                  multicallChunk: 110,
+                  gasLimitPerCall: 1_200_000,
+                  quoteMinSuccessRate: 0.1,
+                },
+                {
+                  gasLimitOverride: 3_000_000,
+                  multicallChunk: 45,
+                },
+                {
+                  gasLimitOverride: 3_000_000,
+                  multicallChunk: 45,
+                },
+                {
+                  baseBlockOffset: -25,
+                  rollback: {
+                    enabled: true,
+                    attemptsBeforeRollback: 1,
+                    rollbackBlockOffset: -20,
+                  },
+                }
+              );
+              break;
+          }
 
           const tenderlySimulator = new TenderlySimulator(
             "https://api.tenderly.co",
@@ -232,9 +255,18 @@ export abstract class InjectorSOR<Router, QueryParams> extends Injector<
             5 * 1000
           );
 
-          const ethEstimateGasSimulator = new EthEstimateGasSimulator(provider, v3PoolProvider);
+          const ethEstimateGasSimulator = new EthEstimateGasSimulator(
+            provider,
 
-          const simulator = new FallbackTenderlySimulator(provider, tenderlySimulator, ethEstimateGasSimulator);
+            v3PoolProvider
+          );
+
+          const simulator = new FallbackTenderlySimulator(
+            provider,
+
+            tenderlySimulator,
+            ethEstimateGasSimulator
+          );
 
           let routeCachingProvider: IRouteCachingProvider | undefined = undefined;
           if (CACHED_ROUTES_TABLE_NAME && CACHED_ROUTES_TABLE_NAME !== "") {
@@ -246,6 +278,7 @@ export abstract class InjectorSOR<Router, QueryParams> extends Injector<
           }
 
           return {
+            chainId,
             dependencies: {
               provider,
               tokenListProvider,
@@ -269,11 +302,15 @@ export abstract class InjectorSOR<Router, QueryParams> extends Injector<
               tokenPropertiesProvider,
             },
           };
-        },
-      ]);
+        })
+      );
+
+      for (const { chainId, dependencies } of dependenciesByChainArray) {
+        (dependenciesByChain as any)[chainId] = dependencies;
+      }
 
       return {
-        dependencies: dependenciesArray[0].dependencies,
+        dependencies: dependenciesByChain,
       };
     } catch (err) {
       log.fatal({ err }, `Fatal: Failed to build container`);
