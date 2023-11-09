@@ -361,10 +361,10 @@
     tiny-invariant "^1.1.0"
     toformat "^2.0.0"
 
-"@basex-fi/smart-order-router@^3.17.5":
-  version "3.17.5"
-  resolved "https://registry.yarnpkg.com/@basex-fi/smart-order-router/-/smart-order-router-3.17.5.tgz#ba0598af4abd4f6232b4d0549fc3ea78bd1f619a"
-  integrity sha512-Xwdx7dZzb97dJCBDeyE15JQuMjhwTBeqBvJnw+RUEjczYhC4nkFZ8By98YZe4vQeGqu/F3TEo38tmu9lod09rA==
+"@basex-fi/smart-order-router@^3.17.6":
+  version "3.17.6"
+  resolved "https://registry.yarnpkg.com/@basex-fi/smart-order-router/-/smart-order-router-3.17.6.tgz#29cbe86516b6f80fc72aadb156bc2b0fed2cfb8b"
+  integrity sha512-zCORA2fSYEzq681NVQQl2238Ylq847lGaDcFbUslWxNmInLtAEa3aIzdL4ojWQxUNITbDsjeFjOreRyBgdRVmQ==
   dependencies:
     "@basex-fi/router-sdk" "^1.0.5"
     "@basex-fi/sdk-core" "^1.1.3"

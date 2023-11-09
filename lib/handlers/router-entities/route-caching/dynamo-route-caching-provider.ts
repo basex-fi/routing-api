@@ -78,7 +78,7 @@ export class DynamoRouteCachingProvider extends IRouteCachingProvider {
    * @param _
    * @protected
    */
-  protected async _getBlocksToLive(_: CurrencyAmount<Currency>): Promise<number> {
+  protected async _getBlocksToLive(_: any): Promise<number> {
     return this.DEFAULT_BLOCKS_TO_LIVE_ROUTES_DB();
   }
 
