@@ -67,9 +67,7 @@ export const QuoteQueryParamsJoi = Joi.object({
 
 export type QuoteQueryParams = {
   tokenInAddress: string;
-  tokenInChainId: number;
   tokenOutAddress: string;
-  tokenOutChainId: number;
   amount: string;
   type: string;
   recipient?: string;

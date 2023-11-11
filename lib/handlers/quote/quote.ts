@@ -107,9 +107,9 @@ export class QuoteHandler extends APIGLambdaHandler<
     const {
       requestQueryParams: {
         tokenInAddress,
-        tokenInChainId,
+
         tokenOutAddress,
-        tokenOutChainId,
+
         amount: amountRaw,
         type,
         recipient,
@@ -162,14 +162,6 @@ export class QuoteHandler extends APIGLambdaHandler<
         statusCode: 400,
         errorCode: "TOKEN_OUT_INVALID",
         detail: `Could not find token with address "${tokenOutAddress}"`,
-      };
-    }
-
-    if (tokenInChainId != tokenOutChainId) {
-      return {
-        statusCode: 400,
-        errorCode: "TOKEN_CHAINS_DIFFERENT",
-        detail: `Cannot request quotes for tokens on different chains`,
       };
     }
 
@@ -407,9 +399,8 @@ export class QuoteHandler extends APIGLambdaHandler<
             amountOut: edgeAmountOut,
           });
         }
-
-        routeResponse.push(curRoute);
       }
+      routeResponse.push(curRoute);
     }
     const routeString = routeAmountsToString(route);
 

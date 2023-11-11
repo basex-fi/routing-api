@@ -9,9 +9,8 @@ dotenv.config();
 (async function () {
   const quotePost: QuoteQueryParams = {
     tokenInAddress: "MKR",
-    tokenInChainId: 1,
     tokenOutAddress: "GRT",
-    tokenOutChainId: 1,
+
     amount: "50",
     type: "exactIn",
     recipient: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
